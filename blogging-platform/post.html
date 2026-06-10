@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Read post on BlogVerse — by Ajinkya More.">
+  <title>Post — BlogVerse</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="reading-progress"></div>
+
+<!-- Navbar -->
+<nav class="navbar" id="navbar">
+  <a href="index.html" class="nav-logo">
+    <span class="nav-logo-icon">✍</span>
+    BlogVerse
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">← Back to Feed</a>
+  </div>
+  <div class="nav-actions" id="nav-post-actions"></div>
+</nav>
+
+<!-- Post Content -->
+<div class="post-page" id="post-root">
+  <!-- Loaded by JS -->
+</div>
+
+<!-- Back to top -->
+<button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">↑</button>
+
+<script src="app.js"></script>
+<script>
+(function(){
+  var _BV = window.BV;
+  var DB = _BV.DB, AUTHOR = _BV.AUTHOR, fmtDate = _BV.fmtDate, timeAgo = _BV.timeAgo,
+      catBadge = _BV.catBadge, catEmoji = _BV.catEmoji, renderCard = _BV.renderCard,
+      renderAuthorBox = _BV.renderAuthorBox, showToast = _BV.showToast,
+      showConfirm = _BV.showConfirm, initNavbar = _BV.initNavbar, escHtml = _BV.escHtml;
+
+  DB.init();
+  initNavbar();
+
+  var params = new URLSearchParams(window.location.search);
+  var postId = params.get('id');
+  var post   = null;
+
+  // ── READING PROGRESS ──────────────────────────────────
+  window.addEventListener('scroll', function(){
+    var scrollTop = window.scrollY;
+    var docH = document.documentElement.scrollHeight - window.innerHeight;
+    var pct  = docH > 0 ? (scrollTop / docH * 100) : 0;
+    var bar  = document.getElementById('reading-progress');
+    if (bar) bar.style.width = pct + '%';
+
+    var btn = document.getElementById('back-to-top');
+    if (btn) btn.classList.toggle('show', scrollTop > 400);
+  }, {passive:true});
+
+  // ── LIKE ──────────────────────────────────────────────
+  window.doLike = function() {
+    if (!post) return;
+    var res = DB.toggleLike(post.id);
+    if (!res) return;
+    post.likes = res.count;
+
+    var btn  = document.getElementById('like-btn');
+    var num  = document.getElementById('like-num');
+    var hint = document.getElementById('like-hint');
+    if (btn)  { btn.classList.toggle('liked', res.liked); btn.style.animation='none'; void btn.offsetWidth; btn.style.animation='pop 0.35s ease'; }
+    if (num)  num.textContent  = res.count;
+    if (hint) hint.textContent = res.liked ? 'Click to unlike' : 'Click to like';
+    showToast(res.liked ? '❤️ Liked!' : 'Like removed', res.liked ? 'success' : 'info');
+  };
+
+  // ── COPY LINK ─────────────────────────────────────────
+  window.copyLink = function() {
+    var url = window.location.href;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function(){
+        showToast('Link copied!', 'success');
+      }).catch(function(){ fallbackCopy(url); });
+    } else { fallbackCopy(url); }
+  };
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); showToast('Link copied!', 'success'); }
+    catch(e) { showToast('Could not copy', 'error'); }
+    document.body.removeChild(ta);
+  }
+
+  // ── DELETE ────────────────────────────────────────────
+  window.doDelete = function() {
+    showConfirm({
+      title:'Delete Post', body:'Permanently delete this post? This cannot be undone.',
+      confirmText:'Delete', cancelText:'Cancel', danger:true,
+      onConfirm: function(){
+        DB.delete(post.id);
+        showToast('Post deleted', 'info');
+        setTimeout(function(){ window.location.href = 'index.html'; }, 700);
+      }
+    });
+  };
+
+  // ── BUILD TOC ─────────────────────────────────────────
+  function buildTOC(bodyEl) {
+    var headings = bodyEl.querySelectorAll('h2, h3');
+    if (headings.length < 2) return '';
+    var items = [].slice.call(headings).map(function(h, i){
+      var id = 'sec-' + i; h.id = id;
+      return '<li class="toc-list"><a href="#'+id+'">'+h.textContent+'</a></li>';
+    });
+    return '<div class="toc"><div class="toc-title">📋 Contents</div><ul class="toc-list">'+items.join('')+'</ul></div>';
+  }
+
+  // ── RENDER ────────────────────────────────────────────
+  function renderPost(p) {
+    document.title = p.title + ' — BlogVerse';
+    var isLiked   = DB.hasLiked(p.id);
+    var tagsHtml  = (p.tags||[]).map(function(t){ return '<span class="badge badge-blue">#'+escHtml(t)+'</span>'; }).join('');
+    var coverHtml = p.coverImage
+      ? '<img src="'+p.coverImage+'" alt="'+escHtml(p.title)+'" class="post-hero-img">'
+      : '<div class="post-hero-placeholder">'+catEmoji(p.category)+'</div>';
+
+    var html = ''
+      // Hero
+      + '<div class="post-hero">'
+      + coverHtml
+      + (p.coverImage ? '<div class="post-hero-overlay"></div>' : '')
+      + '<div class="post-hero-content">'
+      + '<span class="badge '+catBadge(p.category)+'" style="margin-bottom:.75rem">'+escHtml(p.category)+'</span>'
+      + '<h1 style="font-family:\'Playfair Display\',serif;font-size:clamp(1.7rem,4vw,2.8rem);font-weight:700;line-height:1.2;margin-bottom:.5rem;">'+escHtml(p.title)+'</h1>'
+      + (p.excerpt ? '<p style="font-size:1rem;color:rgba(255,255,255,0.7);max-width:620px;">'+escHtml(p.excerpt)+'</p>' : '')
+      + '</div></div>'
+
+      // Body wrap
+      + '<div class="post-body-wrap">'
+
+      // Meta bar
+      + '<div class="post-meta-bar">'
+      + '<div class="author-row">'
+      + '<div class="author-av">AM</div>'
+      + '<div><div class="author-name">'+escHtml(AUTHOR.name)+'</div>'
+      + '<div class="author-date">'+fmtDate(p.createdAt)+' · '+(p.readTime||1)+' min read</div></div>'
+      + '</div>'
+      + '<div style="display:flex;gap:.4rem;flex-wrap:wrap;">'
+      + '<button class="btn btn-secondary btn-sm" onclick="copyLink()">🔗 Share</button>'
+      + '<a href="editor.html?id='+p.id+'" class="btn btn-secondary btn-sm">✏️ Edit</a>'
+      + '<button class="btn btn-danger btn-sm" onclick="doDelete()">🗑️ Delete</button>'
+      + '</div></div>'
+
+      // Tags
+      + (tagsHtml ? '<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.5rem">'+tagsHtml+'</div>' : '')
+
+      // TOC placeholder (filled after HTML inject)
+      + '<div id="toc-wrap"></div>'
+
+      // Body
+      + '<div class="post-body" id="post-body">'+p.body+'</div>'
+
+      // Share bar
+      + '<div class="share-bar">'
+      + '<span class="share-label">Share:</span>'
+      + '<button class="share-btn" onclick="copyLink()">🔗 Copy Link</button>'
+      + '<a class="share-btn" href="https://twitter.com/intent/tweet?text='+encodeURIComponent(p.title)+'&url='+encodeURIComponent(window.location.href)+'" target="_blank" rel="noopener">𝕏 Twitter</a>'
+      + '<a class="share-btn" href="https://www.linkedin.com/sharing/share-offsite/?url='+encodeURIComponent(window.location.href)+'" target="_blank" rel="noopener">🔗 LinkedIn</a>'
+      + '</div>'
+
+      // Like section
+      + '<div class="like-wrap">'
+      + '<button class="like-btn-big'+(isLiked?' liked':'')+'" id="like-btn" onclick="doLike()" style="animation:none">'
+      + (isLiked?'❤️':'🤍')
+      + '</button>'
+      + '<div class="like-num" id="like-num">'+(p.likes||0)+'</div>'
+      + '<div class="like-hint" id="like-hint">'+(isLiked?'Click to unlike':'Click to like')+'</div>'
+      + '</div>'
+
+      // Author box
+      + renderAuthorBox()
+
+      + '</div>' // end post-body-wrap
+
+      // Related
+      + '<div class="related-section" id="related-section">'
+      + '<div style="max-width:880px;margin:0 auto;">'
+      + '<h2 class="section-title">More Posts</h2>'
+      + '<div class="related-grid" id="related-grid"></div>'
+      + '</div></div>'
+
+      // Footer
+      + '<footer class="footer">'
+      + '<div class="footer-logo">BlogVerse ✍</div>'
+      + '<p class="footer-tagline">Crafted with ❤️ by Ajinkya More</p>'
+      + '<div class="footer-links">'
+      + '<a href="index.html" class="footer-link">Home</a>'
+      + '<a href="editor.html" class="footer-link">Write</a>'
+      + '<a href="'+AUTHOR.linkedin+'" target="_blank" rel="noopener" class="footer-link">LinkedIn</a>'
+      + '<a href="'+AUTHOR.github+'"   target="_blank" rel="noopener" class="footer-link">GitHub</a>'
+      + '</div>'
+      + '<p class="footer-copy">© 2025 BlogVerse by Ajinkya More</p>'
+      + '</footer>';
+
+    document.getElementById('post-root').innerHTML = html;
+
+    // Build TOC after DOM update
+    var bodyEl = document.getElementById('post-body');
+    if (bodyEl) {
+      document.getElementById('toc-wrap').innerHTML = buildTOC(bodyEl);
+    }
+
+    // Render related
+    renderRelated(p);
+
+    // Nav actions
+    document.getElementById('nav-post-actions').innerHTML =
+      '<a href="editor.html?id='+p.id+'" class="btn btn-secondary btn-sm">✏️ Edit</a>'
+      + '<a href="editor.html" class="btn btn-primary btn-sm">✏️ New Post</a>';
+  }
+
+  // ── RELATED POSTS ─────────────────────────────────────
+  function renderRelated(cur) {
+    var grid = document.getElementById('related-grid');
+    if (!grid) return;
+
+    var all     = DB.getPublished().filter(function(p){ return p.id !== cur.id; });
+    var sameCat = all.filter(function(p){ return p.category === cur.category; }).slice(0,3);
+    var rest    = all.filter(function(p){ return p.category !== cur.category; });
+    var posts   = sameCat.concat(rest).slice(0,3);
+
+    if (!posts.length) {
+      var sec = document.getElementById('related-section');
+      if (sec) sec.style.display = 'none';
+      return;
+    }
+    grid.innerHTML = posts.map(function(p){ return renderCard(p); }).join('');
+  }
+
+  // ── NOT FOUND ─────────────────────────────────────────
+  function showNotFound() {
+    document.getElementById('post-root').innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;padding:2rem;">'
+      + '<div style="font-size:5rem;margin-bottom:1.5rem">📭</div>'
+      + '<h1 style="font-size:2rem;font-weight:800;margin-bottom:.5rem">Post Not Found</h1>'
+      + '<p style="color:var(--text-secondary);margin-bottom:2rem">This post doesn\'t exist or was deleted.</p>'
+      + '<a href="index.html" class="btn btn-primary">← Back to Home</a>'
+      + '</div>';
+  }
+
+  // ── INIT ──────────────────────────────────────────────
+  if (!postId) {
+    showNotFound();
+  } else {
+    post = DB.getById(postId);
+    if (!post) {
+      showNotFound();
+    } else {
+      renderPost(post);
+    }
+  }
+})();
+</script>
+</body>
+</html>
