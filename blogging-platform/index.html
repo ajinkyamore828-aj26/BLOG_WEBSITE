@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BlogVerse — Personal blogging platform by Ajinkya More. Tech, programming, design and more.">
+  <title>BlogVerse — By Ajinkya More</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .trending-strip { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; display: flex; align-items: center; gap: 1rem; overflow: hidden; }
+    .trending-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--blue-300); white-space: nowrap; flex-shrink: 0; }
+    .trending-track { display: flex; gap: 2rem; white-space: nowrap; animation: ticker 35s linear infinite; }
+    .trending-track:hover { animation-play-state: paused; }
+    .trending-item { font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; transition: var(--t); flex-shrink: 0; }
+    .trending-item:hover { color: var(--blue-300); }
+    @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+    .results-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem; }
+    .results-count { font-size: 0.82rem; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar" id="navbar">
+  <a href="index.html" class="nav-logo">
+    <span class="nav-logo-icon">✍</span>
+    BlogVerse
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link active">Home</a>
+    <a href="#drafts-section" class="nav-link">Drafts</a>
+  </div>
+  <div class="nav-actions">
+    <a href="editor.html" class="btn btn-primary">✏️ Write Post</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-glow-1"></div>
+  <div class="hero-glow-2"></div>
+  <div class="hero-content fade-in-up">
+    <div class="hero-eyebrow">
+      <span class="hero-eyebrow-dot"></span>
+      Personal Blog by Ajinkya More
+    </div>
+    <h1 class="hero-title">Ideas Worth<br>Reading &amp; Writing</h1>
+    <p class="hero-subtitle">Thoughts on technology, programming, design, and the journey of building things. Written by <strong style="color:var(--blue-300)">Ajinkya More</strong>.</p>
+    <div class="hero-actions">
+      <a href="editor.html" class="btn btn-primary btn-lg">✏️ Write a Post</a>
+      <a href="#feed" class="btn btn-secondary btn-lg">📖 Browse Posts</a>
+    </div>
+  </div>
+</section>
+
+<!-- Trending strip -->
+<div class="trending-strip">
+  <span class="trending-label">🔥 Trending</span>
+  <div class="trending-track" id="trending-track">—</div>
+</div>
+
+<!-- Stats -->
+<div class="page-wrap">
+  <div class="stats-banner">
+    <div class="stat-box"><span class="stat-num" id="s-posts">0</span><span class="stat-label">Published Posts</span></div>
+    <div class="stat-box"><span class="stat-num" id="s-drafts">0</span><span class="stat-label">Drafts</span></div>
+    <div class="stat-box"><span class="stat-num" id="s-likes">0</span><span class="stat-label">Total Likes</span></div>
+    <div class="stat-box"><span class="stat-num" id="s-words">0</span><span class="stat-label">Words Written</span></div>
+  </div>
+</div>
+
+<!-- Main Layout -->
+<div class="main-layout" id="feed">
+  <!-- FEED -->
+  <main>
+    <!-- Filter -->
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" class="search-input" placeholder="Search posts…" autocomplete="off">
+      </div>
+    </div>
+    <div class="cat-tabs" id="cat-tabs" style="margin-bottom:1.25rem;"></div>
+
+    <div class="results-row">
+      <span class="results-count" id="results-count"></span>
+      <select id="sort-sel" class="sort-select">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="popular">Most Liked</option>
+      </select>
+    </div>
+
+    <!-- Posts Grid -->
+    <div class="posts-grid" id="posts-grid"></div>
+
+    <!-- Drafts -->
+    <div id="drafts-section" style="margin-top:3rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="font-size:1.1rem;font-weight:700;">📝 My Drafts</h2>
+        <a href="editor.html" class="btn btn-secondary btn-sm">+ New Post</a>
+      </div>
+      <div id="drafts-list"></div>
+    </div>
+  </main>
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="sidebar-sticky">
+
+      <!-- Author -->
+      <div class="sidebar-card" data-aos>
+        <div class="author-card-avatar">AM</div>
+        <div class="author-card-name">Ajinkya More</div>
+        <p class="author-card-bio">Passionate developer sharing knowledge through code and words.</p>
+        <a href="https://www.linkedin.com/in/ajinkya-more-48932940b" target="_blank" rel="noopener" class="social-btn">🔗 LinkedIn</a>
+        <a href="https://github.com/ajinkyamore828-aj26" target="_blank" rel="noopener" class="social-btn">🐙 GitHub</a>
+      </div>
+
+      <!-- Popular -->
+      <div class="sidebar-card" data-aos>
+        <div class="sidebar-title">🏆 Most Liked</div>
+        <div id="popular-list"></div>
+      </div>
+
+      <!-- Categories -->
+      <div class="sidebar-card" data-aos>
+        <div class="sidebar-title">📂 Categories</div>
+        <div id="cats-list" style="display:flex;flex-direction:column;gap:0.4rem;"></div>
+      </div>
+
+    </div>
+  </aside>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-logo">BlogVerse ✍</div>
+  <p class="footer-tagline">Crafted with ❤️ by Ajinkya More</p>
+  <div class="footer-links">
+    <a href="index.html" class="footer-link">Home</a>
+    <a href="editor.html" class="footer-link">Write</a>
+    <a href="https://www.linkedin.com/in/ajinkya-more-48932940b" target="_blank" rel="noopener" class="footer-link">LinkedIn</a>
+    <a href="https://github.com/ajinkyamore828-aj26" target="_blank" rel="noopener" class="footer-link">GitHub</a>
+  </div>
+  <p class="footer-copy">© 2025 BlogVerse by Ajinkya More · HTML, CSS &amp; JavaScript</p>
+</footer>
+
+<script src="app.js"></script>
+<script>
+(function(){
+  var _BV = window.BV;
+  var DB = _BV.DB, renderCard = _BV.renderCard, showToast = _BV.showToast,
+      showConfirm = _BV.showConfirm, initNavbar = _BV.initNavbar,
+      initAOS = _BV.initAOS, catEmoji = _BV.catEmoji, timeAgo = _BV.timeAgo,
+      catBadge = _BV.catBadge, escHtml = _BV.escHtml;
+
+  DB.init();
+  initNavbar();
+
+  var activeCategory = 'All';
+  var searchQuery    = '';
+  var sortOrder      = 'newest';
+  var searchTimer    = null;
+
+  // ── STATS ─────────────────────────────────────────────
+  function renderStats() {
+    var s = DB.getStats();
+    countUp('s-posts',  s.total);
+    countUp('s-drafts', s.drafts);
+    countUp('s-likes',  s.likes);
+    countUp('s-words',  s.words);
+  }
+
+  function countUp(id, target) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var v = 0, step = Math.max(1, target / 50);
+    var t = setInterval(function(){
+      v = Math.min(v + step, target);
+      el.textContent = Math.round(v).toLocaleString();
+      if (v >= target) clearInterval(t);
+    }, 20);
+  }
+
+  // ── TRENDING ──────────────────────────────────────────
+  function renderTrending() {
+    var posts = DB.getPublished().sort(function(a,b){ return (b.likes||0)-(a.likes||0); }).slice(0,7);
+    var track = document.getElementById('trending-track');
+    if (!track || !posts.length) return;
+    var html = posts.map(function(p){
+      return '<span class="trending-item" onclick="window.location.href=\'post.html?id='+p.id+'\'">'+catEmoji(p.category)+' '+escHtml(p.title)+'</span>';
+    }).join('');
+    track.innerHTML = html + html; // duplicate for infinite scroll
+  }
+
+  // ── CATEGORY TABS ─────────────────────────────────────
+  function renderCatTabs() {
+    var pub  = DB.getPublished();
+    var used = ['All'].concat(pub.map(function(p){ return p.category; }).filter(function(v,i,a){ return a.indexOf(v)===i; }));
+    var el   = document.getElementById('cat-tabs');
+    if (!el) return;
+    el.innerHTML = used.map(function(c){
+      return '<button class="cat-tab'+(c===activeCategory?' active':'')
+        +'" onclick="setCategory(\''+c+'\')">'+c+'</button>';
+    }).join('');
+  }
+
+  window.setCategory = function(cat) {
+    activeCategory = cat;
+    renderCatTabs();
+    renderPosts();
+  };
+
+  // ── POSTS ─────────────────────────────────────────────
+  function renderPosts() {
+    var grid = document.getElementById('posts-grid');
+    var cnt  = document.getElementById('results-count');
+    if (!grid) return;
+
+    var posts = DB.search(searchQuery, activeCategory);
+
+    if (sortOrder === 'oldest')  posts.sort(function(a,b){ return new Date(a.createdAt)-new Date(b.createdAt); });
+    else if (sortOrder === 'popular') posts.sort(function(a,b){ return (b.likes||0)-(a.likes||0); });
+
+    if (cnt) cnt.textContent = posts.length + ' post' + (posts.length !== 1 ? 's' : '');
+
+    if (!posts.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">'
+        + '<span class="empty-state-icon">🔍</span>'
+        + '<h3>No posts found</h3>'
+        + '<p>Try a different search or category.</p>'
+        + '<button class="btn btn-secondary" onclick="clearFilters()">Clear filters</button>'
+        + '</div>';
+      return;
+    }
+
+    grid.innerHTML = posts.map(function(p){ return renderCard(p); }).join('');
+    initAOS();
+  }
+
+  window.clearFilters = function() {
+    searchQuery = ''; activeCategory = 'All';
+    var si = document.getElementById('search-input');
+    if (si) si.value = '';
+    renderCatTabs(); renderPosts();
+  };
+
+  // ── DRAFTS ────────────────────────────────────────────
+  function renderDrafts() {
+    var el = document.getElementById('drafts-list');
+    if (!el) return;
+    var drafts = DB.getDrafts();
+    if (!drafts.length) {
+      el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.875rem;">No drafts yet. <a href="editor.html" style="color:var(--blue-300)">Start writing!</a></div>';
+      return;
+    }
+    el.innerHTML = drafts.map(function(p){
+      return '<div class="draft-item" data-aos>'
+        + '<div style="flex:1;min-width:0;cursor:pointer" onclick="window.location.href=\'editor.html?id='+p.id+'\'">'
+        + '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem"><span class="draft-badge">Draft</span></div>'
+        + '<div class="draft-item-title">'+escHtml(p.title||'Untitled Post')+'</div>'
+        + '<div class="draft-item-meta">Last edited '+timeAgo(p.updatedAt)+'</div>'
+        + '</div>'
+        + '<div class="draft-item-actions">'
+        + '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();window.location.href=\'editor.html?id='+p.id+'\'">✏️ Edit</button>'
+        + '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteDraft(\''+p.id+'\')">🗑️</button>'
+        + '</div></div>';
+    }).join('');
+    initAOS();
+  }
+
+  window.deleteDraft = function(id) {
+    showConfirm({
+      title:'Delete Draft', body:'Delete this draft permanently?',
+      confirmText:'Delete', cancelText:'Keep', danger:true,
+      onConfirm: function(){ DB.delete(id); showToast('Draft deleted','info'); renderDrafts(); renderStats(); }
+    });
+  };
+
+  // ── POPULAR ───────────────────────────────────────────
+  function renderPopular() {
+    var el = document.getElementById('popular-list');
+    if (!el) return;
+    var posts = DB.getPublished().sort(function(a,b){ return (b.likes||0)-(a.likes||0); }).slice(0,5);
+    el.innerHTML = posts.map(function(p,i){
+      return '<div class="pop-item" onclick="window.location.href=\'post.html?id='+p.id+'\'">'
+        + '<span class="pop-num">0'+(i+1)+'</span>'
+        + '<div><div class="pop-title">'+escHtml(p.title)+'</div>'
+        + '<div class="pop-meta">❤️ '+(p.likes||0)+' · '+(p.readTime||1)+'m read</div></div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // ── CATEGORY SIDEBAR ──────────────────────────────────
+  function renderCatsSidebar() {
+    var el = document.getElementById('cats-list');
+    if (!el) return;
+    var pub = DB.getPublished();
+    var map = {};
+    pub.forEach(function(p){ map[p.category] = (map[p.category]||0)+1; });
+    el.innerHTML = Object.entries(map).map(function(entry){
+      return '<button class="cat-tab" style="display:flex;justify-content:space-between;border-radius:var(--r-sm);" '
+        + 'onclick="setCategory(\''+entry[0]+'\');document.getElementById(\'feed\').scrollIntoView({behavior:\'smooth\'})">'
+        + '<span>'+catEmoji(entry[0])+' '+entry[0]+'</span>'
+        + '<span style="color:var(--text-muted)">'+entry[1]+'</span></button>';
+    }).join('');
+  }
+
+  // ── EVENTS ────────────────────────────────────────────
+  var si = document.getElementById('search-input');
+  if (si) si.addEventListener('input', function(e){
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function(){ searchQuery = e.target.value.trim(); renderPosts(); }, 250);
+  });
+
+  var ss = document.getElementById('sort-sel');
+  if (ss) ss.addEventListener('change', function(e){ sortOrder = e.target.value; renderPosts(); });
+
+  // ── INIT ──────────────────────────────────────────────
+  renderStats();
+  renderTrending();
+  renderCatTabs();
+  renderPosts();
+  renderDrafts();
+  renderPopular();
+  renderCatsSidebar();
+  initAOS();
+})();
+</script>
+</body>
+</html>

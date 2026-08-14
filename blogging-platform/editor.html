@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor — BlogVerse</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar" id="navbar">
+  <a href="index.html" class="nav-logo">
+    <span class="nav-logo-icon">✍</span>
+    BlogVerse
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">← Back to Feed</a>
+  </div>
+  <div class="nav-actions">
+    <div class="autosave-bar" id="autosave-bar">
+      <span class="autosave-dot"></span> Saved
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="doPreview()">👁 Preview</button>
+    <button class="btn btn-secondary btn-sm" onclick="doSaveDraft()">💾 Save Draft</button>
+    <button class="btn btn-primary" onclick="doPublish()">🚀 Publish</button>
+  </div>
+</nav>
+
+<!-- Title area -->
+<div class="editor-top" style="margin-top:66px;">
+  <textarea id="post-title" class="editor-main-title" placeholder="Your Post Title…" rows="1" oninput="resizeTA(this);updateChecklist()"></textarea>
+  <textarea id="post-excerpt" class="editor-excerpt" placeholder="Short excerpt / summary (optional)…" rows="2" oninput="resizeTA(this)"></textarea>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar-bar" id="toolbar-bar">
+  <select class="tb-select" onchange="fmtBlock(this.value);this.selectedIndex=0">
+    <option value="">¶ Paragraph</option>
+    <option value="h1">H1 Heading</option>
+    <option value="h2">H2 Heading</option>
+    <option value="h3">H3 Heading</option>
+    <option value="blockquote">❝ Quote</option>
+    <option value="pre">⌨ Code Block</option>
+  </select>
+  <div class="tb-divider"></div>
+  <button class="tb-btn" title="Bold (Ctrl+B)"      onclick="cmd('bold')"><b>B</b></button>
+  <button class="tb-btn" title="Italic (Ctrl+I)"    onclick="cmd('italic')"><i>I</i></button>
+  <button class="tb-btn" title="Underline (Ctrl+U)" onclick="cmd('underline')"><u>U</u></button>
+  <button class="tb-btn" title="Strikethrough"      onclick="cmd('strikeThrough')"><s>S</s></button>
+  <div class="tb-divider"></div>
+  <button class="tb-btn" title="Bullet list"   onclick="cmd('insertUnorderedList')">≡</button>
+  <button class="tb-btn" title="Number list"   onclick="cmd('insertOrderedList')">1.</button>
+  <div class="tb-divider"></div>
+  <button class="tb-btn" title="Insert link"   onclick="openLinkDlg()">🔗</button>
+  <button class="tb-btn" title="Insert image"  onclick="openImgDlg()">🖼</button>
+  <button class="tb-btn" title="Inline code"   onclick="wrapInCode()">&#96;</button>
+  <div class="tb-divider"></div>
+  <button class="tb-btn" title="Undo" onclick="cmd('undo')">↩</button>
+  <button class="tb-btn" title="Redo" onclick="cmd('redo')">↪</button>
+</div>
+
+<!-- Editor layout -->
+<div class="editor-layout">
+
+  <!-- Editor main -->
+  <div class="editor-main">
+    <div id="editor"
+         class="editor-content"
+         contenteditable="true"
+         data-placeholder="Start writing your story here…"
+         oninput="onInput()">
+    </div>
+    <div style="display:flex;justify-content:flex-end;padding:0.4rem 0;font-size:0.78rem;color:var(--text-muted);">
+      <span id="wc-label">0 words · ~1 min read</span>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="editor-sidebar">
+
+    <!-- Status -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Status</div>
+      <div class="status-row">
+        <button class="status-btn active" id="btn-draft"     onclick="setStatus('draft')">Draft</button>
+        <button class="status-btn"        id="btn-published" onclick="setStatus('published')">Published</button>
+      </div>
+    </div>
+
+    <!-- Checklist -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">✅ Publish Checklist</div>
+      <div class="checklist">
+        <div class="check-row" id="chk-title">  <span id="ci-title">⚪</span> Title added</div>
+        <div class="check-row" id="chk-content"><span id="ci-content">⚪</span> Content written</div>
+        <div class="check-row" id="chk-cat">   <span id="ci-cat">⚪</span> Category selected</div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">⚙️ Settings</div>
+      <div class="form-group">
+        <label class="form-label" for="post-cat">Category *</label>
+        <select id="post-cat" class="form-select" onchange="updateChecklist()">
+          <option value="">Select a category…</option>
+          <option>Technology</option>
+          <option>Programming</option>
+          <option>Design</option>
+          <option>Career</option>
+          <option>Tutorial</option>
+          <option>Opinion</option>
+          <option>Lifestyle</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tags <small style="color:var(--text-muted)">(press Enter)</small></label>
+        <div class="tags-wrap" id="tags-wrap" onclick="document.getElementById('tag-input').focus()">
+          <input type="text" id="tag-input" class="tags-input" placeholder="Add tag…" onkeydown="handleTag(event)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Cover image -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">🖼 Cover Image</div>
+      <div id="cover-preview" style="display:none;">
+        <img id="cover-img" class="cover-preview-img" src="" alt="Cover">
+        <button onclick="removeCover()" style="font-size:0.75rem;color:#f87171;background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit;padding:0;">Remove</button>
+      </div>
+      <div id="cover-drop" class="cover-drop">
+        <input type="file" id="cover-file" accept="image/*" onchange="handleCoverFile(event)">
+        <div class="cover-drop-icon">📷</div>
+        <div class="cover-drop-text">Click to upload cover image</div>
+      </div>
+      <div style="margin-top:0.65rem;">
+        <label class="form-label">Or image URL</label>
+        <input type="url" id="cover-url-input" class="form-input" placeholder="https://…" oninput="handleCoverUrl(this.value)">
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Preview Overlay -->
+<div id="preview-overlay">
+  <div class="preview-inner">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+      <h2 style="font-weight:800;background:var(--grad-text);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Preview</h2>
+      <button class="btn btn-secondary" onclick="closePreview()">✕ Close</button>
+    </div>
+    <h1 id="pv-title" style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;margin-bottom:0.75rem;"></h1>
+    <div id="pv-meta" style="display:flex;gap:1rem;color:var(--text-muted);font-size:0.85rem;margin-bottom:1.5rem;flex-wrap:wrap;"></div>
+    <img id="pv-cover" style="display:none;width:100%;border-radius:var(--r-md);margin-bottom:1.5rem;max-height:380px;object-fit:cover;" src="" alt="">
+    <div id="pv-body" class="post-body"></div>
+  </div>
+</div>
+
+<!-- Link Dialog -->
+<div class="modal-bg" id="link-dlg">
+  <div class="modal-box">
+    <h3 class="modal-title">Insert Link</h3>
+    <div class="form-group" style="margin-top:1rem;">
+      <label class="form-label">Link Text</label>
+      <input type="text" id="link-text-in" class="form-input" placeholder="Display text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">URL</label>
+      <input type="url" id="link-url-in" class="form-input" placeholder="https://…">
+    </div>
+    <div class="modal-foot" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="closeLinkDlg()">Cancel</button>
+      <button class="btn btn-primary"   onclick="insertLink()">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image Dialog -->
+<div class="modal-bg" id="img-dlg">
+  <div class="modal-box">
+    <h3 class="modal-title">Insert Image</h3>
+    <div class="form-group" style="margin-top:1rem;">
+      <label class="form-label">Image URL</label>
+      <input type="url" id="img-url-in" class="form-input" placeholder="https://…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alt Text</label>
+      <input type="text" id="img-alt-in" class="form-input" placeholder="Image description">
+    </div>
+    <div class="modal-foot" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="closeImgDlg()">Cancel</button>
+      <button class="btn btn-primary"   onclick="insertImg()">Insert</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+(function(){
+  var _BV = window.BV;
+  var DB = _BV.DB, showToast = _BV.showToast, genId = _BV.genId, initNavbar = _BV.initNavbar;
+
+  DB.init();
+  initNavbar();
+
+  // ── STATE ──────────────────────────────────────────────
+  var postId      = genId();
+  var postStatus  = 'draft';
+  var coverImage  = '';
+  var tags        = [];
+  var savedRange  = null;
+  var asTimer     = null;
+
+  // ── LOAD EXISTING POST ─────────────────────────────────
+  (function loadPost(){
+    var params = new URLSearchParams(window.location.search);
+    var id     = params.get('id');
+
+    if (!id) {
+      // Check for autosave
+      var saved = DB.loadAutosave();
+      if (saved && saved.title) {
+        if (confirm('Found an unsaved draft: "' + saved.title + '". Restore it?')) {
+          applyData(saved);
+          return;
+        } else {
+          DB.clearAutosave();
+        }
+      }
+      return;
+    }
+
+    var p = DB.getById(id);
+    if (p) {
+      postId = p.id;
+      applyData(p);
+    } else {
+      showToast('Post not found', 'error');
+    }
+  })();
+
+  function applyData(p) {
+    if (p.id)       postId = p.id;
+    if (p.title)    { var t = document.getElementById('post-title');   t.value = p.title;   resizeTA(t); }
+    if (p.excerpt)  { var e = document.getElementById('post-excerpt'); e.value = p.excerpt; resizeTA(e); }
+    if (p.body)     document.getElementById('editor').innerHTML = p.body;
+    if (p.category) document.getElementById('post-cat').value   = p.category;
+    if (p.status)   setStatus(p.status);
+    if (p.tags)     { tags = [].concat(p.tags); renderTags(); }
+    if (p.coverImage) setCover(p.coverImage);
+    updateWC();
+    updateChecklist();
+  }
+
+  // ── TEXTAREA AUTO-RESIZE ───────────────────────────────
+  window.resizeTA = function(el) {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  };
+
+  // ── STATUS ─────────────────────────────────────────────
+  window.setStatus = function(s) {
+    postStatus = s;
+    document.getElementById('btn-draft').classList.toggle('active',     s==='draft');
+    document.getElementById('btn-published').classList.toggle('active', s==='published');
+  };
+
+  // ── WORD COUNT ─────────────────────────────────────────
+  function updateWC() {
+    var txt   = document.getElementById('editor').innerText || '';
+    var words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
+    var mins  = Math.max(1, Math.round(words / 200));
+    document.getElementById('wc-label').textContent = words.toLocaleString() + ' words · ~' + mins + ' min read';
+  }
+
+  // ── CHECKLIST ──────────────────────────────────────────
+  window.updateChecklist = function() {
+    setCheck('chk-title',   'ci-title',   document.getElementById('post-title').value.trim().length >= 3);
+    setCheck('chk-content', 'ci-content', (document.getElementById('editor').innerText||'').trim().length >= 10);
+    setCheck('chk-cat',     'ci-cat',     !!document.getElementById('post-cat').value);
+  };
+  function setCheck(rowId, iconId, ok) {
+    var row  = document.getElementById(rowId);
+    var icon = document.getElementById(iconId);
+    if (!row || !icon) return;
+    row.className  = 'check-row' + (ok ? ' ok' : '');
+    icon.textContent = ok ? '✅' : '⚪';
+  }
+
+  // ── AUTOSAVE ───────────────────────────────────────────
+  function triggerAutosave() {
+    clearTimeout(asTimer);
+    asTimer = setTimeout(function(){
+      DB.autosave(collect());
+      var bar = document.getElementById('autosave-bar');
+      if (bar) { bar.classList.add('show'); setTimeout(function(){ bar.classList.remove('show'); }, 2000); }
+    }, 1500);
+  }
+
+  window.onInput = function() { updateWC(); updateChecklist(); triggerAutosave(); };
+
+  // ── COLLECT DATA ───────────────────────────────────────
+  function collect() {
+    return {
+      id:         postId,
+      title:      document.getElementById('post-title').value.trim(),
+      excerpt:    document.getElementById('post-excerpt').value.trim(),
+      body:       document.getElementById('editor').innerHTML,
+      category:   document.getElementById('post-cat').value,
+      tags:       tags.slice(),
+      coverImage: coverImage,
+      status:     postStatus
+    };
+  }
+
+  // ── SAVE DRAFT ─────────────────────────────────────────
+  window.doSaveDraft = function() {
+    var data = collect();
+    data.status = 'draft';
+    DB.save(data);
+    DB.clearAutosave();
+    showToast('Draft saved!', 'success');
+    // Update URL
+    if (window.location.search.indexOf('id=') === -1) {
+      history.replaceState(null, '', 'editor.html?id=' + postId);
+    }
+  };
+
+  // ── PUBLISH ────────────────────────────────────────────
+  window.doPublish = function() {
+    var title   = document.getElementById('post-title').value.trim();
+    var content = (document.getElementById('editor').innerText || '').trim();
+    var cat     = document.getElementById('post-cat').value;
+
+    if (!title) {
+      showToast('⚠️ Please add a title!', 'error');
+      document.getElementById('post-title').focus();
+      return;
+    }
+    if (content.length < 10) {
+      showToast('⚠️ Please write some content!', 'error');
+      document.getElementById('editor').focus();
+      return;
+    }
+    if (!cat) {
+      showToast('⚠️ Please select a category!', 'error');
+      document.getElementById('post-cat').focus();
+      return;
+    }
+
+    var data = collect();
+    data.status = 'published';
+    var saved = DB.save(data);
+    DB.clearAutosave();
+    postId = saved.id || postId;
+    showToast('🎉 Published successfully!', 'success');
+    setTimeout(function(){ window.location.href = 'post.html?id=' + postId; }, 1000);
+  };
+
+  // ── PREVIEW ────────────────────────────────────────────
+  window.doPreview = function() {
+    var data = collect();
+    document.getElementById('pv-title').textContent = data.title || 'Untitled';
+    document.getElementById('pv-meta').innerHTML =
+      '<span>📂 '+(data.category||'None')+'</span>'
+      +'<span>·</span><span>'+DB.calcReadTime(data.body)+' min read</span>'
+      +(data.tags.length ? '<span>·</span><span>'+data.tags.map(function(t){return '#'+t;}).join(' ')+'</span>' : '');
+    document.getElementById('pv-body').innerHTML = data.body;
+    var cvr = document.getElementById('pv-cover');
+    if (data.coverImage) { cvr.src = data.coverImage; cvr.style.display='block'; }
+    else cvr.style.display = 'none';
+    document.getElementById('preview-overlay').style.display = 'block';
+  };
+  window.closePreview = function() {
+    document.getElementById('preview-overlay').style.display = 'none';
+  };
+
+  // ── TOOLBAR ────────────────────────────────────────────
+  window.cmd = function(c, v) {
+    document.getElementById('editor').focus();
+    document.execCommand(c, false, v || null);
+  };
+  window.fmtBlock = function(tag) {
+    if (!tag) return;
+    document.getElementById('editor').focus();
+    document.execCommand('formatBlock', false, tag);
+  };
+  window.wrapInCode = function() {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    var rng = sel.getRangeAt(0);
+    var code = document.createElement('code');
+    try { code.appendChild(rng.extractContents()); rng.insertNode(code); }
+    catch(e) { document.execCommand('insertHTML', false, '<code>code</code>'); }
+  };
+
+  // ── LINK DIALOG ────────────────────────────────────────
+  window.openLinkDlg = function() {
+    try { savedRange = window.getSelection().getRangeAt(0); } catch(e){}
+    var sel = savedRange ? savedRange.toString() : '';
+    document.getElementById('link-text-in').value = sel;
+    document.getElementById('link-url-in').value  = '';
+    document.getElementById('link-dlg').classList.add('open');
+    setTimeout(function(){ document.getElementById('link-url-in').focus(); }, 80);
+  };
+  window.closeLinkDlg = function() { document.getElementById('link-dlg').classList.remove('open'); };
+  window.insertLink = function() {
+    var txt = document.getElementById('link-text-in').value || 'link';
+    var url = document.getElementById('link-url-in').value.trim();
+    if (!url) { showToast('Please enter a URL', 'error'); return; }
+    document.getElementById('editor').focus();
+    if (savedRange) {
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange);
+    }
+    document.execCommand('insertHTML', false, '<a href="'+url+'" target="_blank">'+txt+'</a>');
+    closeLinkDlg();
+  };
+
+  // ── IMAGE DIALOG ───────────────────────────────────────
+  window.openImgDlg = function() {
+    try { savedRange = window.getSelection().getRangeAt(0); } catch(e){}
+    document.getElementById('img-url-in').value = '';
+    document.getElementById('img-alt-in').value = '';
+    document.getElementById('img-dlg').classList.add('open');
+    setTimeout(function(){ document.getElementById('img-url-in').focus(); }, 80);
+  };
+  window.closeImgDlg = function() { document.getElementById('img-dlg').classList.remove('open'); };
+  window.insertImg = function() {
+    var url = document.getElementById('img-url-in').value.trim();
+    var alt = document.getElementById('img-alt-in').value.trim() || 'Image';
+    if (!url) { showToast('Please enter an image URL', 'error'); return; }
+    document.getElementById('editor').focus();
+    if (savedRange) {
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange);
+    }
+    document.execCommand('insertHTML', false, '<img src="'+url+'" alt="'+alt+'" style="max-width:100%;border-radius:8px;">');
+    closeImgDlg();
+  };
+
+  // Close dialogs on overlay click
+  document.getElementById('link-dlg').addEventListener('click', function(e){ if(e.target===this) closeLinkDlg(); });
+  document.getElementById('img-dlg').addEventListener('click',  function(e){ if(e.target===this) closeImgDlg(); });
+
+  // ── TAGS ───────────────────────────────────────────────
+  window.handleTag = function(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      var val = e.target.value.trim().replace(/^#/,'').replace(/\s+/g,'-').toLowerCase();
+      if (val && tags.indexOf(val) === -1 && tags.length < 8) { tags.push(val); renderTags(); }
+      e.target.value = '';
+    } else if (e.key === 'Backspace' && !e.target.value && tags.length) {
+      tags.pop(); renderTags();
+    }
+  };
+  function renderTags() {
+    var wrap  = document.getElementById('tags-wrap');
+    var input = document.getElementById('tag-input');
+    wrap.querySelectorAll('.tag-pill').forEach(function(p){ p.remove(); });
+    tags.forEach(function(tag, i){
+      var pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.innerHTML = '#'+tag+'<span class="tag-x" onclick="removeTag('+i+')">×</span>';
+      wrap.insertBefore(pill, input);
+    });
+  }
+  window.removeTag = function(i) { tags.splice(i,1); renderTags(); };
+
+  // ── COVER ──────────────────────────────────────────────
+  window.handleCoverFile = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var r = new FileReader();
+    r.onload = function(ev){ setCover(ev.target.result); };
+    r.readAsDataURL(file);
+  };
+  window.handleCoverUrl = function(url) {
+    if (url && url.startsWith('http')) setCover(url);
+  };
+  function setCover(src) {
+    coverImage = src;
+    document.getElementById('cover-img').src         = src;
+    document.getElementById('cover-preview').style.display = 'block';
+    document.getElementById('cover-drop').style.display    = 'none';
+  }
+  window.removeCover = function() {
+    coverImage = '';
+    document.getElementById('cover-url-input').value         = '';
+    document.getElementById('cover-preview').style.display    = 'none';
+    document.getElementById('cover-drop').style.display       = 'block';
+    document.getElementById('cover-file').value               = '';
+  };
+
+  // ── KEYBOARD SHORTCUTS ─────────────────────────────────
+  document.addEventListener('keydown', function(e){
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); doSaveDraft(); }
+  });
+
+  // Tab in editor
+  document.getElementById('editor').addEventListener('keydown', function(e){
+    if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;'); }
+  });
+
+  // ── INIT ───────────────────────────────────────────────
+  updateWC();
+  updateChecklist();
+})();
+</script>
+</body>
+</html>
